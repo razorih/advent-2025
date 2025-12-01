@@ -1,0 +1,8 @@
+[package]
+name = "advent-2025"
+version = "0.1.0"
+edition = "2024"
+autobins = true
+
+[lib]
+path = "src/lib.rs"
