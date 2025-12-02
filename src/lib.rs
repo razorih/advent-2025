@@ -5,6 +5,11 @@ use std::{
 
 pub fn read_input_from_env() -> io::Result<String> {
     let filename = get_filename_from_args()?;
+
+    if filename == "-" {
+        return std::io::read_to_string(std::io::stdin());
+    }
+
     let resolved = resolve_path(&filename)?;
 
     std::fs::read_to_string(resolved)
