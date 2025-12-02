@@ -1,4 +1,4 @@
-use std::io;
+use std::{fmt::Write, io};
 
 use advent_2025::read_input_from_env;
 
@@ -25,34 +25,22 @@ fn parse(input: &str) -> Vec<Range> {
         .collect()
 }
 
-/// Check if given number has even number of digits
-fn even_digits(num: u64) -> bool {
-    (num.ilog10() + 1).is_multiple_of(2)
-}
-
-/// Splits given (even digit) number into two halves
-fn split_num(num: u64) -> (u32, u32) {
-    let str = num.to_string(); // welcome to allocation hell
-    let (upper, lower) = str.split_at(str.len() / 2);
-
-    (
-        u32::from_str_radix(upper, 10).unwrap(),
-        u32::from_str_radix(lower, 10).unwrap(),
-    )
-}
-
 fn silver(input: &[Range]) -> u64 {
     let mut sum = 0;
+    let mut buffer = String::new(); // buffer to hold formatted numbers
 
     for range in input {
         for num in range.start..=range.end {
+            buffer.clear();
+            write!(&mut buffer, "{}", num).unwrap();
+
             // invalid id's will always have even number of digits
-            if !even_digits(num) {
-                // @TODO: jump to next valid?
+            if !buffer.len().is_multiple_of(2) {
                 continue;
             }
 
-            let (upper, lower) = split_num(num);
+            let (upper, lower) = buffer.split_at(buffer.len() / 2);
+
             if upper == lower {
                 sum += num;
             }
