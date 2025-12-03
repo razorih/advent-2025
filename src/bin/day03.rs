@@ -2,61 +2,55 @@ use std::io;
 
 use advent_2025::read_input_from_env;
 
-fn silver(input: &str) -> u64 {
-    let mut sum: u64 = 0;
+fn solve<const N: usize>(banks: &Vec<Vec<u8>>) -> u64 {
+    banks.into_iter().map(|bank| joltage::<N>(bank)).sum()
+}
 
-    for line in input.lines() {
-        let bats = line
-            .chars()
-            .map(|chr| chr.to_digit(10).unwrap() as u8)
-            .collect::<Vec<u8>>();
+/// Calculate joltage of N batteries in given bank
+fn joltage<const N: usize>(bank: &[u8]) -> u64 {
+    let mut gathered: [u8; N] = [0; N];
 
-        // joltage indices
-        let mut upper: usize = 0;
-        let mut lower: usize = 1;
+    // bank index where we can start looking for next maximum
+    let mut cursor = 0;
 
-        // @TODO: could be computed in loop below
-        for j in lower..bats.len() {
-            if bats[j] >= bats[lower] {
-                lower = j;
+    for n in 0..N {
+        let mut best = 0;
+
+        // can't look till end since then there wouldn't be space for rest of the digits
+        for i in cursor..bank.len() - N + n + 1 {
+            // >= would give last best, we need first best instead
+            if bank[i] > best {
+                best = bank[i];
+                cursor = i + 1;
             }
         }
 
-        for i in 0..bats.len() - 1 {
-            // try to find better upper joltage
-            if bats[i] > bats[upper] {
-                upper = i;
-
-                // if higher joltage was found, reset lower and repeat
-                lower = i + 1;
-                for j in lower..bats.len() {
-                    if bats[j] >= bats[lower] {
-                        lower = j;
-                    }
-                }
-            }
-        }
-
-        // println!(
-        //     "upper = {} (i: {:3}), lower = {} (j: {:3}), jolt = {}",
-        //     bats[upper],
-        //     upper,
-        //     bats[lower],
-        //     lower,
-        //     bats[upper] * 10 + bats[lower]
-        // );
-
-        sum += bats[upper] as u64 * 10 + bats[lower] as u64;
+        gathered[n] = best;
     }
 
-    sum
+    gathered
+        .into_iter()
+        .enumerate()
+        .fold(0_u64, |acc, (nth, digit)| {
+            let base = 10_u64.pow(N as u32 - nth as u32 - 1);
+            acc + (base * digit as u64)
+        })
 }
 
 fn main() -> io::Result<()> {
     let input = read_input_from_env()?;
+    let banks: Vec<Vec<u8>> = input
+        .trim()
+        .lines()
+        .map(|line| {
+            line.chars()
+                .map(|chr| chr.to_digit(10).unwrap() as u8)
+                .collect()
+        })
+        .collect();
 
-    println!("silver: {}", silver(&input));
+    println!("silver: {}", solve::<2>(&banks));
+    println!("gold: {}", solve::<12>(&banks));
 
     Ok(())
 }
-
