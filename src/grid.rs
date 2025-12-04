@@ -1,3 +1,5 @@
+use std::fmt::Display;
+
 #[derive(Debug, Clone)]
 pub struct Grid<T> {
     pub content: Vec<T>,
@@ -80,6 +82,27 @@ impl<T: Copy> Grid<T> {
             }
         }
         None
+    }
+}
+
+impl<T> Display for Grid<T>
+where
+    T: Display,
+{
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        for row in 0..self.height {
+            for col in 0..self.width {
+                let index = col + row * self.width;
+                write!(f, "{}", self.content[index])?;
+            }
+
+            if row + 1 != self.height {
+                // print newline if this isn't the last row
+                write!(f, "\n")?;
+            }
+        }
+
+        Ok(())
     }
 }
 
