@@ -35,15 +35,43 @@ fn silver(grid: &Grid<Tile>) -> usize {
         .count()
 }
 
+fn gold(grid: &mut Grid<Tile>) -> usize {
+    let mut total = 0;
+
+    loop {
+        let removed = grid
+            .iter_indexed()
+            .filter_map(|((col, row), tile)| {
+                let for_removal = matches!(tile, Tile::Roll) && check_tile(grid, col, row);
+
+                // filter_map since we need to give up &tile reference
+                if for_removal { Some((col, row)) } else { None }
+            })
+            .collect::<Vec<_>>();
+
+        if removed.len() == 0 {
+            break;
+        }
+        total += removed.len();
+
+        for (rm_c, rm_r) in removed {
+            *grid.at_mut(rm_c, rm_r).unwrap() = Tile::Empty;
+        }
+    }
+
+    total
+}
+
 fn main() -> io::Result<()> {
     let input = read_input_from_env()?;
-    let grid = Grid::new(&input, |chr, _| match chr {
+    let mut grid = Grid::new(&input, |chr, _| match chr {
         '.' => Tile::Empty,
         '@' => Tile::Roll,
         _ => panic!("invalid tile in input"),
     });
 
     println!("silver: {}", silver(&grid));
+    println!("gold: {}", gold(&mut grid));
 
     Ok(())
 }
