@@ -3,6 +3,9 @@ use std::{
     path::{Path, PathBuf},
 };
 
+pub mod grid;
+pub use grid::{Grid, GridEntry, GridEntryMut};
+
 pub fn read_input_from_env() -> io::Result<String> {
     let filename = get_filename_from_args()?;
 
