@@ -61,31 +61,38 @@ fn gold(ranges: &mut [Range]) -> u64 {
     // first sort ranges so that starts are in ascending order
     ranges.sort_unstable_by_key(|range| range.start);
 
-    let mut merged: Vec<Range> = Vec::new();
-    for range in ranges {
-        let Some(last) = merged.last_mut() else {
-            merged.push(*range); // seed range
-            continue;
-        };
-
-        // unstable sort may have flipped ranges with equal starts somewhere
+    let mut sum = 0;
+    let mut last = ranges[0];
+    for current in &ranges[1..] {
         // make sure that we have the longest range
-        if last.start == range.start {
-            last.end = u64::max(last.end, range.end);
+        // i.e. choose longest:
+        //   |-----|
+        //   |--------|
+        if last.start == current.start {
+            last.end = u64::max(last.end, current.end);
             continue;
         }
 
-        if last.end >= range.start {
-            // need to extend, check which one is the longest
-            last.end = u64::max(last.end, range.end);
+        // handle merging either
+        //   last:  |------|
+        //   curr:     |------|
+        //    =>    |---------|
+        // or
+        //   last:  |------|
+        //   curr:    |--|
+        //    =>    |------|
+        if last.end >= current.start {
+            last.end = u64::max(last.end, current.end);
             continue;
         }
 
-        // disjoint range
-        merged.push(*range);
+        // disjoint range, restart
+        sum += last.count();
+        last = *current;
     }
+    sum += last.count(); // leftover last disjoint range
 
-    merged.into_iter().map(|range| range.count()).sum()
+    sum
 }
 
 fn main() -> io::Result<()> {
