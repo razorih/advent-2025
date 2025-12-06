@@ -30,6 +30,18 @@ impl<T: Copy> Grid<T> {
         }
     }
 
+    pub fn from_vec_and_dimensions(content: Vec<T>, width: usize, height: usize) -> Self {
+        if content.len() != width * height {
+            panic!("invalid grid dimensions");
+        }
+
+        Self {
+            content,
+            width,
+            height,
+        }
+    }
+
     pub fn at(&self, col: usize, row: usize) -> Option<T> {
         let index = col + row * self.width;
         self.content.get(index).copied()
