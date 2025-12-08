@@ -11,6 +11,7 @@ struct Point {
 
 impl Point {
     fn euclidean_distance(&self, other: &Self) -> f64 {
+        // abs_diff is fine since we're squaring anyway
         let dx = self.x.abs_diff(other.x) as f64;
         let dy = self.y.abs_diff(other.y) as f64;
         let dz = self.z.abs_diff(other.z) as f64;
@@ -35,28 +36,22 @@ fn brute_force_sorted_distances(points: &[Point]) -> Vec<(usize, usize, f64)> {
     out
 }
 
-fn silver(points: &[Point]) -> u64 {
+fn solve<const GOLD: bool>(points: &[Point]) -> u64 {
     let distances = brute_force_sorted_distances(points);
 
     // mapping of point index => circuit id
-    let mut circuits: HashMap<usize, usize> = HashMap::with_capacity(points.len());
+    // by default each point creates its own circuit
+    let mut circuits: HashMap<usize, usize> = (0..points.len()).map(|i| (i, i)).collect();
 
-    for (i, j, _dist) in distances.into_iter().take(1000) {
+    let distance_slice = if GOLD {
+        &distances[..]
+    } else {
+        &distances[..1000]
+    };
+
+    for &(i, j, _dist) in distance_slice {
         match (circuits.get(&i), circuits.get(&j)) {
-            (None, None) => {
-                // brand new circuit "i"
-                circuits.insert(i, i);
-                circuits.insert(j, i);
-            }
-            (None, Some(&circ)) => {
-                // merge i to j circuit
-                circuits.insert(i, circ);
-            }
-            (Some(&circ), None) => {
-                // merge j to i circuit
-                circuits.insert(j, circ);
-            }
-            (Some(&c1), Some(&c2)) => {
+            (Some(&c1), Some(&c2)) if c1 != c2 => {
                 // need to merge two circuits together
                 // just put c2 => c1
                 circuits.values_mut().for_each(|circ| {
@@ -65,14 +60,36 @@ fn silver(points: &[Point]) -> u64 {
                     }
                 });
             }
+            // c1 == c2 intra-network merge, skip
+            _ => continue,
+        }
+
+        if GOLD {
+            // slightly less stupid circuit size counting (now in a loop)
+            let circuit_count = circuits
+                .values()
+                .fold(HashMap::<usize, usize>::new(), |mut acc, circuit| {
+                    *acc.entry(*circuit).or_insert(0) += 1;
+                    acc
+                })
+                .len();
+
+            if circuit_count == 1 {
+                // final merge was just completed,
+                // since c1 and c2 still hold circuit ids that were just merged
+                // fetch original points using i and j
+                return points[i].x * points[j].x;
+            }
         }
     }
 
+    // silver only below here
+
     // stupid circuit size counting
     let mut counts: Vec<usize> = circuits
-        .into_values()
+        .values()
         .fold(HashMap::<usize, usize>::new(), |mut acc, circuit| {
-            *acc.entry(circuit).or_default() += 1;
+            *acc.entry(*circuit).or_insert(0) += 1;
             acc
         })
         .into_values()
@@ -86,7 +103,8 @@ fn main() -> io::Result<()> {
     let input = read_input_from_env()?;
     let points = parse(&input);
 
-    println!("silver: {}", silver(&points));
+    println!("silver: {}", solve::<false>(&points));
+    println!("gold: {}", solve::<true>(&points));
 
     Ok(())
 }
