@@ -1,5 +1,5 @@
 use std::{
-    collections::HashSet,
+    collections::{HashMap, HashSet},
     fmt::{Display, Write},
     io,
 };
@@ -51,6 +51,61 @@ fn silver(grid: &Grid<Tile>) -> u64 {
     splits
 }
 
+/// Look for a splitter below some coordinate.
+/// Returns the same coordinate if the coordinate itself contains a splitter
+fn look_down_for_splitter(
+    grid: &Grid<Tile>,
+    (start_col, start_row): (usize, usize),
+) -> Option<(usize, usize)> {
+    for row in start_row..grid.height() {
+        if let Some(Tile::Splitter) = grid.at(start_col, row) {
+            return Some((start_col, row));
+        }
+    }
+
+    None
+}
+
+fn path_count(
+    grid: &Grid<Tile>,
+    memo: &mut HashMap<(usize, usize), u64>,
+    (col, row): (usize, usize),
+) -> u64 {
+    if let Some(&remembered) = memo.get(&(col, row)) {
+        return remembered;
+    }
+
+    let left_paths = if let Some(next) = look_down_for_splitter(grid, (col - 1, row)) {
+        path_count(grid, memo, next)
+    } else {
+        1 // base case, beam goes out of bounds
+    };
+
+    let right_paths = if let Some(next) = look_down_for_splitter(grid, (col + 1, row)) {
+        path_count(grid, memo, next)
+    } else {
+        1 // base case, beam goes out of bounds
+    };
+
+    // base case
+    memo.insert((col, row), left_paths + right_paths);
+    left_paths + right_paths
+}
+
+fn gold(grid: &Grid<Tile>) -> u64 {
+    let (start_col, start_row) = grid
+        .find_one_pos_by(|tile| matches!(tile, Tile::Start))
+        .expect("failed to find start position");
+
+    let mut visited: HashMap<(usize, usize), u64> = HashMap::new();
+
+    path_count(
+        grid,
+        &mut visited,
+        look_down_for_splitter(grid, (start_col, start_row)).unwrap(),
+    )
+}
+
 fn main() -> io::Result<()> {
     let input = read_input_from_env()?;
     let grid = Grid::new(&input, |chr, _| match chr {
@@ -61,6 +116,7 @@ fn main() -> io::Result<()> {
     });
 
     println!("silver: {}", silver(&grid));
+    println!("gold: {}", gold(&grid));
 
     Ok(())
 }
