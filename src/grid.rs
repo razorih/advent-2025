@@ -1,8 +1,10 @@
+#![allow(dead_code)]
+
 use std::fmt::Display;
 
 #[derive(Debug, Clone)]
 pub struct Grid<T> {
-    pub content: Vec<T>,
+    content: Vec<T>,
     width: usize,
     height: usize,
 }
@@ -40,6 +42,14 @@ impl<T: Copy> Grid<T> {
             width,
             height,
         }
+    }
+
+    fn content(&self) -> &[T] {
+        self.content.as_slice()
+    }
+
+    fn content_mut(&mut self) -> &mut [T] {
+        self.content.as_mut_slice()
     }
 
     pub fn at(&self, col: usize, row: usize) -> Option<T> {
@@ -94,6 +104,74 @@ impl<T: Copy> Grid<T> {
             }
         }
         None
+    }
+
+    /// Get an iterator over given row
+    ///
+    /// Returns an empty iterator if row is out of bounds
+    pub fn iter_row(&self, row: usize) -> impl Iterator<Item = T> {
+        self.content
+            .iter()
+            .skip(row * self.width)
+            .take(self.width)
+            .copied()
+    }
+
+    /// Get an iterator over given column
+    ///
+    /// Returns an empty iterator if column is out of bounds
+    pub fn iter_col(&self, col: usize) -> impl Iterator<Item = T> {
+        self.content.iter().skip(col).step_by(self.width).copied()
+    }
+
+    /// Transposes itself in-place if the grid is square
+    ///
+    /// Panics if the grid is not square
+    ///
+    /// Pseudocode from:
+    /// https://en.wikipedia.org/wiki/In-place_matrix_transposition#Square_matrices
+    pub fn transpose_square(&mut self) {
+        if self.width != self.height {
+            panic!("grid is not square");
+        }
+
+        #[allow(non_snake_case)]
+        let N = self.width;
+
+        for row in 0..N - 1 {
+            for col in row + 1..N {
+                let src = row * N + col;
+                let dst = col * N + row;
+
+                self.content.swap(src, dst);
+            }
+        }
+    }
+
+    /// Creates a transposed copy of the grid
+    ///
+    /// If your grid is a square,
+    /// you may want to use [`Self::transpose_square`] instead
+    pub fn clone_transposed(&self) -> Self {
+        // all elements will be overwritten
+        // so this is just an allocation
+        // without needing T: Default or MaybeUninit
+        let mut new_content = self.content.clone();
+
+        for row in 0..self.height {
+            for col in 0..self.width {
+                let src = row * self.width + col;
+                let dst = col * self.height + row;
+
+                new_content[dst] = self.content[src];
+            }
+        }
+
+        Grid {
+            content: new_content,
+            width: self.height,
+            height: self.width,
+        }
     }
 }
 
@@ -203,5 +281,57 @@ impl<T: Copy> GridEntryMut<'_, T> {
         } else {
             None
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn transpose_general() {
+        let grid = Grid::from_vec_and_dimensions(vec![1, 2, 3, 4, 5, 6], 2, 3);
+        let transposed = grid.clone_transposed();
+
+        assert_eq!(transposed.content(), &[1, 3, 5, 2, 4, 6]);
+    }
+
+    #[test]
+    fn transpose_square() {
+        let mut grid = Grid::from_vec_and_dimensions(vec![1, 2, 3, 4], 2, 2);
+
+        grid.transpose_square();
+
+        assert_eq!(grid.content(), &[1, 3, 2, 4]);
+    }
+
+    #[test]
+    fn transpose_vec() {
+        let grid = Grid::from_vec_and_dimensions(vec![1, 2, 3, 4, 5], 1, 5);
+        let transposed = grid.clone_transposed();
+
+        assert_eq!(transposed.content(), &[1, 2, 3, 4, 5]);
+        assert_eq!(transposed.width(), 5);
+        assert_eq!(transposed.height(), 1);
+    }
+
+    #[test]
+    fn iterates_row() {
+        let grid = Grid::from_vec_and_dimensions(vec![1, 2, 3, 4, 5, 6, 7, 8, 9], 3, 3);
+        assert!(grid.iter_row(1).eq([4, 5, 6]));
+    }
+
+    #[test]
+    fn iterates_col() {
+        let grid = Grid::from_vec_and_dimensions(vec![1, 2, 3, 4, 5, 6, 7, 8, 9], 3, 3);
+        assert!(grid.iter_col(1).eq([2, 5, 8]));
+    }
+
+    #[test]
+    fn out_of_bounds_iterators_are_empty() {
+        let grid = Grid::from_vec_and_dimensions(vec![1, 2, 3, 4, 5, 6, 7, 8, 9], 3, 3);
+
+        assert_eq!(grid.iter_row(69).next(), None);
+        assert_eq!(grid.iter_col(420).next(), None);
     }
 }
